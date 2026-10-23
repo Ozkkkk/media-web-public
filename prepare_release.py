@@ -19,7 +19,7 @@ def validate(brand):
     record = json.loads((BASE/'release-manifest.json').read_text(encoding='utf-8'))['brands'][brand]
     root = BASE/'sites'/brand
     files = [p for p in root.rglob('*') if p.is_file()]
-    if len(files) != record['files'] or record['articles'] < 1:
+    if len(files) != record['files'] or len(record['sha256']) != len(files) or record['articles'] < 1:
         raise ValueError('Empty or changed package file count')
     for path in files:
         rel = path.relative_to(root).as_posix()
