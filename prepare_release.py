@@ -23,8 +23,11 @@ def validate(brand):
         raise ValueError('Empty or changed package file count')
     for path in files:
         rel = path.relative_to(root).as_posix()
-        if path.is_symlink() or path.suffix not in ('.html','.xml','.svg','.css','.js','.txt','.json'):
+        if path.is_symlink() or path.suffix not in ('.html','.xml','.svg','.css','.js','.txt','.json','.png'):
             raise ValueError('Unsafe public file')
+        if path.suffix == '.png' and (not re.fullmatch(r'assets/covers/[a-z0-9-]+\.png', rel)
+                or not path.read_bytes().startswith(b'\x89PNG\r\n\x1a\n')):
+            raise ValueError('Only verified PNG covers allowed')
         if re.search(r'(?i)(^|/)(private|secrets|credentials)(/|$)|(^|/)\.env($|\.)|(^|/)(deployment-)?token(\.[^/]*)?$|\.(sql|dump|pem|key|pfx)(\.gz)?$', rel):
             raise ValueError('Private path in public package')
         if hashlib.sha256(path.read_bytes()).hexdigest() != record['sha256'].get(rel):
