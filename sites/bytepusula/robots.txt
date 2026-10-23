@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+Sitemap: https://bytepusula.com/sitemap.xml
+Sitemap: https://bytepusula.com/news-sitemap.xml

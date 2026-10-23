@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+Sitemap: https://oyunpiksel.com/sitemap.xml
+Sitemap: https://oyunpiksel.com/news-sitemap.xml

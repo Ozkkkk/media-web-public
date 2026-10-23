@@ -1,0 +1,69 @@
+name: Verified Free static deployment
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['sites/**', 'release-manifest.json', 'prepare_release.py', '.github/workflows/deploy.yml']
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: public-media-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - brand: oyunpiksel
+            secret: AZURE_OYUNPIKSEL_DEPLOY_TOKEN
+            suffix: 09034c210
+          - brand: bytepusula
+            secret: AZURE_BYTEPUSULA_DEPLOY_TOKEN
+            suffix: '052173310'
+          - brand: perdepop
+            secret: AZURE_PERDEPOP_DEPLOY_TOKEN
+            suffix: 0a106f610
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Validate isolated public package and prune expired news entries
+        id: package
+        env:
+          BRAND: ${{ matrix.brand }}
+        run: python prepare_release.py "$BRAND" --scheduled "${{ github.event_name == 'schedule' }}"
+      - name: Verify existing application key identity
+        if: steps.package.outputs.deploy == 'true'
+        env:
+          DEPLOY_KEY: ${{ secrets[matrix.secret] }}
+          EXPECTED_SUFFIX: ${{ matrix.suffix }}
+        run: |
+          python - <<'PY'
+          import os
+          key = os.environ.get('DEPLOY_KEY', '')
+          if len(key) < 80 or not key.endswith(os.environ['EXPECTED_SUFFIX']):
+              raise SystemExit('Missing or wrong-brand deployment key. Upload stopped.')
+          print('PASS: key matches existing application; no key printed.')
+          PY
+      - name: Deploy to existing Free application
+        if: steps.package.outputs.deploy == 'true'
+        uses: Azure/static-web-apps-deploy@4d27395796ac319302594769cfe812bd207490b1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets[matrix.secret] }}
+          action: upload
+          app_location: sites/${{ matrix.brand }}
+          output_location: ''
+          skip_app_build: true
+          skip_api_build: true
+          production_branch: main
+      - name: Verify real custom domain after deployment
+        if: steps.package.outputs.deploy == 'true'
+        env:
+          BRAND: ${{ matrix.brand }}
+        run: python prepare_release.py "$BRAND" --verify-live

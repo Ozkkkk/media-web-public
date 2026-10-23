@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+Sitemap: https://perdepop.com/sitemap.xml
+Sitemap: https://perdepop.com/news-sitemap.xml

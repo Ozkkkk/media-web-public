@@ -1,0 +1,1 @@
+const s=document.querySelector('#search');if(s){s.addEventListener('input',()=>{let n=0;for(const c of document.querySelectorAll('[data-search]')){c.hidden=!c.dataset.search.includes(s.value.toLocaleLowerCase('tr'));if(!c.hidden)n++;}document.querySelector('#empty').hidden=n>0;});}
