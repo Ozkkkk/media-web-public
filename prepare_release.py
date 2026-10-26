@@ -14,6 +14,10 @@ BRANDS = ('oyunpiksel', 'bytepusula', 'perdepop')
 NS = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
 NEWS = '{http://www.google.com/schemas/sitemap-news/0.9}'
 BASE = Path(__file__).resolve().parent
+# News entries need not fill the entire allowed 48-hour window. Keep a 12-hour
+# safety margin for delayed scheduled jobs, queues and deployments. This only
+# trims the news sitemap, never article pages, regular sitemap or RSS.
+NEWS_RETENTION = timedelta(hours=36)
 
 def validate(brand):
     record = json.loads((BASE/'release-manifest.json').read_text(encoding='utf-8'))['brands'][brand]
@@ -44,18 +48,18 @@ def request(url):
     with urllib.request.urlopen(req, timeout=30) as response:
         return response.status, response.read()
 
-def prune(data):
+def prune(data, now=None):
     root = ET.fromstring(data)
     if root.tag != NS+'urlset':
         raise ValueError('Unexpected news sitemap')
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) if now is None else now
     removed = 0
     for node in list(root):
         raw = node.findtext(NEWS+'news/'+NEWS+'publication_date')
         stamp = datetime.fromisoformat(raw or '')
         if stamp.tzinfo is None or stamp > now:
             raise ValueError('Invalid news publication timestamp')
-        if stamp < now-timedelta(days=2):
+        if stamp < now-NEWS_RETENTION:
             root.remove(node)
             removed += 1
     return ET.tostring(root, encoding='unicode'), removed
